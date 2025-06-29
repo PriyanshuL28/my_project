@@ -1,0 +1,101 @@
+{% extends 'fraud_detector/base.html' %}
+
+{% block title %}Home - Insurance Fraud Detection{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Hero Section -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="jumbotron bg-light p-5 rounded"><center>
+                <h1 class="display-4 fw-bold text-primary">Insurance Fraud Detection System</h1>
+                <p class="lead">Advanced AI-powered system to detect fraudulent insurance claims using machine learning and pattern recognition.</p>
+                <hr class="my-4">
+                
+                <p>Upload your claims data and get instant fraud risk analysis with detailed insights.</p>
+                <a class="btn btn-primary btn-lg" href="{% url 'fraud_detector:upload' %}" role="button">
+                    <i class="fas fa-upload"></i> Upload Claims CSV
+                </a></center>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-white bg-info mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Total Analyses</h5>
+                    <p class="card-text display-6">{{ total_analyses }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-success mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Total Claims</h5>
+                    <p class="card-text display-6">{{ total_claims }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-warning mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">High Risk Claims</h5>
+                    <p class="card-text display-6">{{ high_risk_claims }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-danger mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Risk Percentage</h5>
+                    <p class="card-text display-6">{{ high_risk_percentage|floatformat:1 }}%</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Analyses -->
+    {% if recent_analyses %}
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mb-4">Recent Analyses</h2>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Upload Date</th>
+                            <th>Total Claims</th>
+                            <th>High Risk</th>
+                            <th>Critical Risk</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for analysis in recent_analyses %}
+                        <tr>
+                            <td>#{{ analysis.id }}</td>
+                            <td>{{ analysis.uploaded_at|date:"Y-m-d H:i" }}</td>
+                            <td>{{ analysis.total_claims }}</td>
+                            <td><span class="badge bg-warning">{{ analysis.high_risk_count }}</span></td>
+                            <td><span class="badge bg-danger">{{ analysis.critical_risk_count }}</span></td>
+                            <td>
+                                <a href="{% url 'fraud_detector:dashboard' analysis.id %}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-chart-bar"></i> Dashboard
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <a href="{% url 'fraud_detector:analysis_history' %}" class="btn btn-secondary">
+                View All Analyses <i class="fas fa-arrow-right"></i>
+            </a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,144 @@
+{% extends 'fraud_detector/base.html' %}
+{% load static %}
+
+{% block title %}All Claims - Analysis #{{ analysis.id }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h2">All Claims - Analysis #{{ analysis.id }}</h1>
+            <a href="{% url 'fraud_detector:dashboard' analysis.id %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+    
+    <!-- Search and Filter -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <input type="text" class="form-control" name="search" 
+                           placeholder="Search claims..." value="{{ search_query }}">
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" name="risk_level">
+                        <option value="">All Risk Levels</option>
+                        <option value="Low" {% if risk_filter == 'Low' %}selected{% endif %}>Low</option>
+                        <option value="Medium" {% if risk_filter == 'Medium' %}selected{% endif %}>Medium</option>
+                        <option value="High" {% if risk_filter == 'High' %}selected{% endif %}>High</option>
+                        <option value="Critical" {% if risk_filter == 'Critical' %}selected{% endif %}>Critical</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" name="sort">
+                        <option value="-fraud_score" {% if sort_by == '-fraud_score' %}selected{% endif %}>Fraud Score (High to Low)</option>
+                        <option value="fraud_score" {% if sort_by == 'fraud_score' %}selected{% endif %}>Fraud Score (Low to High)</option>
+                        <option value="-date_of_loss" {% if sort_by == '-date_of_loss' %}selected{% endif %}>Date (Newest First)</option>
+                        <option value="date_of_loss" {% if sort_by == 'date_of_loss' %}selected{% endif %}>Date (Oldest First)</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search"></i> Search
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Claims Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Claim Number</th>
+                            <th>Claimant Name</th>
+                            <th>Date of Loss</th>
+                            <th>Injury Type</th>
+                            <th>Body Part</th>
+                            <th>Days to Report</th>
+                            <th>Risk Level</th>
+                            <th>Fraud Score</th>
+                            <th>Red Flags</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for claim in page_obj %}
+                        <tr class="{% if claim.risk_level == 'Critical' %}table-danger{% elif claim.risk_level == 'High' %}table-warning{% elif claim.risk_level == 'Medium' %}table-info{% endif %}">
+                            <td>{{ claim.claim_number }}</td>
+                            <td>{{ claim.claimant_name|truncatechars:30 }}</td>
+                            <td>{{ claim.date_of_loss|date:"Y-m-d"|default:"-" }}</td>
+                            <td>{{ claim.injury_type|truncatechars:30 }}</td>
+                            <td>{{ claim.body_part|truncatechars:30 }}</td>
+                            <td>{{ claim.days_to_report|default:"-" }}</td>
+                            <td>
+                                <span class="badge {% if claim.risk_level == 'Critical' %}bg-danger{% elif claim.risk_level == 'High' %}bg-warning{% elif claim.risk_level == 'Medium' %}bg-info{% else %}bg-success{% endif %}">
+                                    {{ claim.risk_level }}
+                                </span>
+                            </td>
+                            <td>{{ claim.fraud_score }}</td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" 
+                                        data-bs-toggle="popover" 
+                                        data-bs-trigger="hover"
+                                        data-bs-html="true"
+                                        data-bs-content="{% for flag in claim.red_flags %}<span class='badge bg-secondary d-block mb-1'>{{ flag }}</span>{% empty %}No red flags{% endfor %}">
+                                    {{ claim.red_flags|length }} flags
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="9" class="text-center">No claims found.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            {% if page_obj.has_other_pages %}
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}&search={{ search_query }}&risk_level={{ risk_filter }}&sort={{ sort_by }}">Previous</a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}&search={{ search_query }}&risk_level={{ risk_filter }}&sort={{ sort_by }}">{{ num }}</a>
+                    </li>
+                    {% endif %}
+                    {% endfor %}
+                    
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}&search={{ search_query }}&risk_level={{ risk_filter }}&sort={{ sort_by }}">Next</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+// Initialize popovers
+document.addEventListener('DOMContentLoaded', function() {
+    var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'))
+    var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
+        return new bootstrap.Popover(popoverTriggerEl)
+    })
+});
+</script>
+{% endblock %}

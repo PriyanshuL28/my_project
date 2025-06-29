@@ -1,0 +1,15 @@
+# ---- core stack (all have cp313 wheels) ----
+Django==4.2.7
+numpy>=2.3.0 --pre          # first NumPy with 3.13 wheels:contentReference[oaicite:1]{index=1}
+pandas>=2.2.3 --pre         # first Pandas with 3.13 wheels:contentReference[oaicite:2]{index=2}
+scipy>=1.13.0 --pre         # scikit‑learn needs it; wheels exist
+scikit-learn>=1.6.0         # cp313 wheels on PyPI:contentReference[oaicite:3]{index=3}
+matplotlib>=3.9.0           # 3.9+ ships cp313 wheels:contentReference[oaicite:4]{index=4}
+seaborn>=0.13.2             # pure‑python, OK
+Pillow>=11.0.0              # 11.0 officially supports 3.13:contentReference[oaicite:5]{index=5}
+openpyxl==3.1.2             # pure‑python
+# ---- Django helpers ----
+django-crispy-forms==2.1
+crispy-bootstrap5==0.7
+django-tables2==2.6.0
+django-filter==23.3

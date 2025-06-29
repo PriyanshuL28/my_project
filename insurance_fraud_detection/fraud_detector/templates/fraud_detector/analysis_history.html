@@ -1,0 +1,143 @@
+{% extends 'fraud_detector/base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}High Risk Claims - Analysis #{{ analysis.id }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h2">High & Critical Risk Claims - Analysis #{{ analysis.id }}</h1>
+            <a href="{% url 'fraud_detector:dashboard' analysis.id %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+    
+    <!-- Summary Alert -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-warning">
+                <h4 class="alert-heading"><i class="fas fa-exclamation-triangle"></i> High Risk Summary</h4>
+                <p>Found {{ page_obj.paginator.count }} claims with High or Critical risk levels.</p>
+                <hr>
+                <p class="mb-0">These claims require immediate attention and further investigation.</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- High Risk Claims Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Claim Number</th>
+                            <th>Claimant Name</th>
+                            <th>Risk Level</th>
+                            <th>Fraud Score</th>
+                            <th>Date of Loss</th>
+                            <th>Days to Report</th>
+                            <th>Injury Type</th>
+                            <th>Red Flags</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for claim in page_obj %}
+                        <tr class="{% if claim.risk_level == 'Critical' %}table-danger{% else %}table-warning{% endif %}">
+                            <td><strong>{{ claim.claim_number }}</strong></td>
+                            <td>{{ claim.claimant_name }}</td>
+                            <td>
+                                <span class="badge {% if claim.risk_level == 'Critical' %}bg-danger{% else %}bg-warning text-dark{% endif %}">
+                                    {{ claim.risk_level }}
+                                </span>
+                            </td>
+                            <td><strong>{{ claim.fraud_score }}</strong></td>
+                            <td>{{ claim.date_of_loss|date:"Y-m-d"|default:"-" }}</td>
+                            <td>
+                                {% if claim.days_to_report %}
+                                    <span class="{% if claim.days_to_report > 30 %}text-danger fw-bold{% endif %}">
+                                        {{ claim.days_to_report }} days
+                                    </span>
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>{{ claim.injury_type|truncatechars:40 }}</td>
+                            <td>
+                                <div class="d-flex flex-wrap gap-1">
+                                    {% for flag in claim.red_flags|slice:":3" %}
+                                    <span class="badge bg-secondary">{{ flag }}</span>
+                                    {% endfor %}
+                                    {% if claim.red_flags|length > 3 %}
+                                    <span class="badge bg-dark">+{{ claim.red_flags|length|add:"-3" }} more</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                {% if claim.claim_amount %}
+                                    ${{ claim.claim_amount|floatformat:2|intcomma }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="9" class="text-center">No high-risk claims found.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            {% if page_obj.has_other_pages %}
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                    </li>
+                    {% endif %}
+                    {% endfor %}
+                    
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Export Options -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Export Options</h5>
+                    <p class="card-text">Download the high-risk claims data for further analysis or reporting.</p>
+                    <a href="{% url 'fraud_detector:download_file' analysis.id 'high_risk' %}" class="btn btn-danger">
+                        <i class="fas fa-download"></i> Download High Risk Claims CSV
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

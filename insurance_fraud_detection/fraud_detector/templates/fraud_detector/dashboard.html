@@ -1,0 +1,679 @@
+{% extends 'fraud_detector/base.html' %}
+{% load humanize %}
+
+{% block title %}Analysis Dashboard - Insurance Fraud Detection{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Dashboard specific styles */
+    .dashboard-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem 0;
+        margin-bottom: 2rem;
+        border-radius: 0 0 1rem 1rem;
+    }
+    
+    .dashboard-title {
+    font-size: 2.5rem;
+    font-weight: 600; /* More solid and readable */
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+    color: white; 
+    margin-bottom: 0.5rem;
+}
+    
+    .dashboard-subtitle {
+        font-size: 1.1rem;
+        opacity: 0.9;
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .stat-card {
+        background: white;
+        border-radius: 1rem;
+        padding: 1.5rem;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+    }
+    
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 4px;
+        background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+    }
+    
+    .stat-card.low::before { background: #10b981; }
+    .stat-card.medium::before { background: #f59e0b; }
+    .stat-card.high::before { background: #ef4444; }
+    .stat-card.critical::before { background: #dc2626; }
+    
+    .stat-value {
+        font-size: 3rem;
+        font-weight: 700;
+        line-height: 1;
+        margin-bottom: 0.5rem;
+    }
+    
+    .stat-label {
+        font-size: 0.875rem;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin-bottom: 2rem;
+    }
+    
+    .action-buttons .btn {
+        padding: 0.75rem 1.5rem;
+        border-radius: 0.5rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        border: none;
+    }
+    
+    .visualization-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+        gap: 2rem;
+        margin-bottom: 2rem;
+    }
+    
+    .visualization-card {
+        background: white;
+        border-radius: 1rem;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+    
+    .visualization-card:hover {
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.12);
+    }
+    
+    .visualization-header {
+        padding: 1.5rem;
+        border-bottom: 1px solid #e5e7eb;
+        background: #f9fafb;
+    }
+    
+    .visualization-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin: 0;
+    }
+    
+    .visualization-body {
+        padding: 1.5rem;
+        background: white;
+        min-height: 400px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .visualization-body img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 0.5rem;
+        cursor: zoom-in;
+    }
+    
+    .full-width-card {
+        grid-column: 1 / -1;
+    }
+    
+    .claims-section {
+        background: white;
+        border-radius: 1rem;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+        margin-top: 2rem;
+    }
+    
+    .claims-header {
+        padding: 1.5rem;
+        background: #f9fafb;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .claims-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin: 0;
+    }
+    
+    .claims-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .claims-table th {
+        background: #f9fafb;
+        padding: 1rem;
+        text-align: left;
+        font-weight: 600;
+        color: #4b5563;
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        border-bottom: 2px solid #e5e7eb;
+    }
+    
+    .claims-table td {
+        padding: 1rem;
+        border-bottom: 1px solid #f3f4f6;
+    }
+    
+    .claims-table tr:hover {
+        background: #f9fafb;
+    }
+    
+    .risk-badge {
+        display: inline-block;
+        padding: 0.375rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    
+    .risk-badge.low {
+        background: #d1fae5;
+        color: #065f46;
+    }
+    
+    .risk-badge.medium {
+        background: #fed7aa;
+        color: #92400e;
+    }
+    
+    .risk-badge.high {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+    
+    .risk-badge.critical {
+        background: #dc2626;
+        color: white;
+    }
+    
+    .red-flag-pill {
+        display: inline-block;
+        background: #e5e7eb;
+        color: #374151;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        margin: 0.125rem;
+    }
+    
+    .loading-placeholder {
+        width: 100%;
+        height: 400px;
+        background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+        background-size: 200% 100%;
+        animation: loading 1.5s infinite;
+        border-radius: 0.5rem;
+    }
+    
+    @keyframes loading {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+    }
+    
+    @media (max-width: 768px) {
+        .visualization-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+        
+        .action-buttons {
+            flex-direction: column;
+        }
+        
+        .action-buttons .btn {
+            width: 100%;
+        }
+        
+        .dashboard-title {
+            font-size: 2rem;
+        }
+        
+        .stat-value {
+            font-size: 2.5rem;
+        }
+    }
+
+    .pattern-item {
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    transition: background-color 0.2s;
+}
+
+.pattern-item:hover {
+    background-color: #f8f9fa;
+}
+
+.pattern-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.card h5 .badge {
+    font-size: 0.875rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Dashboard Header -->
+<div class="dashboard-header">
+    <div class="container-fluid">
+        <h1 class="dashboard-title">Fraud Analysis Dashboard</h1>
+        <p class="dashboard-subtitle">
+            Analysis #{{ analysis.id }} • Uploaded {{ analysis.uploaded_at|date:"F j, Y g:i A" }}
+        </p>
+    </div>
+</div>
+
+<div class="container-fluid">
+
+    <!-- Action Buttons -->
+    <div class="action-buttons">
+        <a href="{% url 'fraud_detector:claims_table' analysis.id %}" class="btn btn-primary">
+            <i class="fas fa-table me-2"></i>View All Claims
+        </a>
+        <a href="{% url 'fraud_detector:high_risk_claims' analysis.id %}" class="btn btn-danger">
+            <i class="fas fa-exclamation-triangle me-2"></i>High Risk Claims
+        </a>
+        <a href="{% url 'fraud_detector:download_file' analysis.id 'full' %}" class="btn btn-success">
+            <i class="fas fa-download me-2"></i>Download Results
+        </a>
+        <a href="{% url 'fraud_detector:download_file' analysis.id 'high_risk' %}" class="btn btn-warning">
+            <i class="fas fa-download me-2"></i>Download High Risk
+        </a>
+    </div>
+
+    <!-- Summary Statistics -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-value text-primary">{{ summary_stats.total_claims|intcomma }}</div>
+            <div class="stat-label">Total Claims</div>
+        </div>
+        <div class="stat-card low">
+            <div class="stat-value text-success">{{ summary_stats.risk_distribution.Low|intcomma }}</div>
+            <div class="stat-label">Low Risk</div>
+        </div>
+        <div class="stat-card medium">
+            <div class="stat-value text-warning">{{ summary_stats.risk_distribution.Medium|intcomma }}</div>
+            <div class="stat-label">Medium Risk</div>
+        </div>
+        <div class="stat-card high">
+            <div class="stat-value text-danger">{{ summary_stats.risk_distribution.High|intcomma }}</div>
+            <div class="stat-label">High Risk</div>
+        </div>
+        <div class="stat-card critical">
+            <div class="stat-value text-danger">{{ summary_stats.risk_distribution.Critical|intcomma }}</div>
+            <div class="stat-label">Critical Risk</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value text-info">{{ summary_stats.high_risk_percentage|floatformat:1 }}%</div>
+            <div class="stat-label">High Risk Rate</div>
+        </div>
+    </div>
+    
+    <!-- Pattern Analysis Section -->
+{% if pattern_analysis %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h3 class="mb-3">Fraud Pattern Analysis</h3>
+    </div>
+    
+    <!-- Timing Patterns Card -->
+    <div class="col-md-4 mb-3">
+        <div class="card h-100 border-primary">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-clock"></i> Timing Patterns 
+                    <span class="badge bg-light text-primary float-end">{{ pattern_analysis.timing_count }}</span>
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="pattern-list">
+                    {% for pattern in pattern_analysis.timing_patterns %}
+                    <div class="pattern-item d-flex justify-content-between align-items-center mb-2">
+                        <span>
+                            <i class="fas fa-check-circle text-success"></i> 
+                            {{ pattern.name }}
+                        </span>
+                        <span class="badge bg-primary">{{ pattern.count }}</span>
+                    </div>
+                    {% empty %}
+                    <p class="text-muted mb-0">No timing patterns detected</p>
+                    {% endfor %}
+                </div>
+                {% if pattern_analysis.timing_percentage > 0 %}
+                <div class="mt-3">
+                    <div class="progress" style="height: 10px;">
+                        <div class="progress-bar bg-primary" role="progressbar" 
+                             style="width: {{ pattern_analysis.timing_percentage }}%">
+                        </div>
+                    </div>
+                    <small class="text-muted">{{ pattern_analysis.timing_percentage|floatformat:1 }}% of claims have timing patterns</small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Behavioral Patterns Card -->
+    <div class="col-md-4 mb-3">
+        <div class="card h-100 border-warning">
+            <div class="card-header bg-warning">
+                <h5 class="mb-0">
+                    <i class="fas fa-user-check"></i> Behavioral Patterns
+                    <span class="badge bg-light text-warning float-end">{{ pattern_analysis.behavioral_count }}</span>
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="pattern-list">
+                    {% for pattern in pattern_analysis.behavioral_patterns %}
+                    <div class="pattern-item d-flex justify-content-between align-items-center mb-2">
+                        <span>
+                            <i class="fas fa-check-circle text-success"></i> 
+                            {{ pattern.name }}
+                        </span>
+                        <span class="badge bg-warning text-dark">{{ pattern.count }}</span>
+                    </div>
+                    {% empty %}
+                    <p class="text-muted mb-0">No behavioral patterns detected</p>
+                    {% endfor %}
+                </div>
+                {% if pattern_analysis.behavioral_percentage > 0 %}
+                <div class="mt-3">
+                    <div class="progress" style="height: 10px;">
+                        <div class="progress-bar bg-warning" role="progressbar" 
+                             style="width: {{ pattern_analysis.behavioral_percentage }}%">
+                        </div>
+                    </div>
+                    <small class="text-muted">{{ pattern_analysis.behavioral_percentage|floatformat:1 }}% of claims have behavioral patterns</small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Reporting Patterns Card -->
+    <div class="col-md-4 mb-3">
+        <div class="card h-100 border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-file-alt"></i> Reporting Patterns
+                    <span class="badge bg-light text-danger float-end">{{ pattern_analysis.reporting_count }}</span>
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="pattern-list">
+                    {% for pattern in pattern_analysis.reporting_patterns %}
+                    <div class="pattern-item d-flex justify-content-between align-items-center mb-2">
+                        <span>
+                            <i class="fas fa-check-circle text-success"></i> 
+                            {{ pattern.name }}
+                        </span>
+                        <span class="badge bg-danger">{{ pattern.count }}</span>
+                    </div>
+                    {% empty %}
+                    <p class="text-muted mb-0">No reporting patterns detected</p>
+                    {% endfor %}
+                </div>
+                {% if pattern_analysis.reporting_percentage > 0 %}
+                <div class="mt-3">
+                    <div class="progress" style="height: 10px;">
+                        <div class="progress-bar bg-danger" role="progressbar" 
+                             style="width: {{ pattern_analysis.reporting_percentage }}%">
+                        </div>
+                    </div>
+                    <small class="text-muted">{{ pattern_analysis.reporting_percentage|floatformat:1 }}% of claims have reporting patterns</small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Top Pattern Summary -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Most Common Fraud Indicators</h5>
+                <div class="row">
+                    {% for indicator in pattern_analysis.top_indicators|slice:":6" %}
+                    <div class="col-md-4 mb-2">
+                        <div class="d-flex justify-content-between align-items-center p-2 bg-light rounded">
+                            <span class="text-truncate">{{ indicator.name }}</span>
+                            <span class="badge bg-secondary">{{ indicator.count }} claims</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+
+    <!-- Visualizations 
+    <h2 class="h3 mb-4 text-muted">Fraud Analysis Visualizations</h2>
+-->
+    <div class="visualization-grid">
+        {% if visualizations.risk_distribution %}
+        <div class="visualization-card">
+            <div class="visualization-header">
+                <h3 class="visualization-title">Risk Level Distribution</h3>
+            </div>
+            <div class="visualization-body">
+                <img src="{% url 'fraud_detector:visualization' analysis.id 'risk_distribution' %}" 
+                     alt="Risk Distribution"
+                     loading="lazy">
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if visualizations.fraud_score_dist %}
+        <div class="visualization-card">
+            <div class="visualization-header">
+                <h3 class="visualization-title">Fraud Score Distribution</h3>
+            </div>
+            <div class="visualization-body">
+                <img src="{% url 'fraud_detector:visualization' analysis.id 'fraud_score_dist' %}" 
+                     alt="Fraud Score Distribution"
+                     loading="lazy">
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if visualizations.days_to_report %}
+        <div class="visualization-card">
+            <div class="visualization-header">
+                <h3 class="visualization-title">Days to Report Distribution</h3>
+            </div>
+            <div class="visualization-body">
+                <img src="{% url 'fraud_detector:visualization' analysis.id 'days_to_report' %}" 
+                     alt="Days to Report"
+                     loading="lazy">
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if visualizations.red_flags %}
+        <div class="visualization-card">
+            <div class="visualization-header">
+                <h3 class="visualization-title">Most Common Red Flags</h3>
+            </div>
+            <div class="visualization-body">
+                <img src="{% url 'fraud_detector:visualization' analysis.id 'red_flags' %}" 
+                     alt="Red Flags"
+                     loading="lazy">
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if visualizations.monthly_trend %}
+        <div class="visualization-card">
+            <div class="visualization-header">
+                <h3 class="visualization-title">Monthly Fraud Trends</h3>
+            </div>
+            <div class="visualization-body">
+                <img src="{% url 'fraud_detector:visualization' analysis.id 'monthly_trend' %}" 
+                     alt="Monthly Trend"
+                     loading="lazy">
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if visualizations.correlation %}
+        <div class="visualization-card">
+            <div class="visualization-header">
+                <h3 class="visualization-title">Fraud Indicators Correlation Matrix</h3>
+            </div>
+            <div class="visualization-body">
+                <img src="{% url 'fraud_detector:visualization' analysis.id 'correlation' %}" 
+                     alt="Correlation Matrix"
+                     loading="lazy">
+            </div>
+        </div>
+        {% endif %}
+    </div>
+     
+    <!-- Top High Risk Claims -->
+    {% if top_claims %}
+    <div class="claims-section">
+        <div class="claims-header">
+            <h3 class="claims-title">Top High-Risk Claims</h3>
+        </div>
+        <div class="table-responsive">
+            <table class="claims-table">
+                <thead>
+                    <tr>
+                        <th>Claim Number</th>
+                        <th>Claimant</th>
+                        <th>Risk Level</th>
+                        <th>Fraud Score</th>
+                        <th>Date of Loss</th>
+                        <th>Red Flags</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for claim in top_claims %}
+                    <tr>
+                        <td><strong>{{ claim.claim_number }}</strong></td>
+                        <td>{{ claim.claimant_name|truncatechars:30 }}</td>
+                        <td>
+                            <span class="risk-badge {{ claim.risk_level|lower }}">
+                                {{ claim.risk_level }}
+                            </span>
+                        </td>
+                        <td><strong>{{ claim.fraud_score|floatformat:1 }}</strong></td>
+                        <td>{{ claim.date_of_loss|date:"M d, Y"|default:"-" }}</td>
+                        <td>
+                            {% for flag in claim.red_flags|slice:":3" %}
+                            <span class="red-flag-pill">{{ flag }}</span>
+                            {% endfor %}
+                            {% if claim.red_flags|length > 3 %}
+                            <span class="red-flag-pill">+{{ claim.red_flags|length|add:"-3" }} more</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Image Modal -->
+<div class="modal fade" id="imageModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center p-0">
+                <img src="" class="img-fluid" alt="">
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Image modal functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('imageModal');
+    const modalImg = modal.querySelector('.modal-body img');
+    const modalTitle = modal.querySelector('.modal-title');
+    
+    // Add click handlers to all visualization images
+    document.querySelectorAll('.visualization-body img').forEach(img => {
+        img.addEventListener('click', function() {
+            modalImg.src = this.src;
+            modalImg.alt = this.alt;
+            modalTitle.textContent = this.alt;
+            new bootstrap.Modal(modal).show();
+        });
+    });
+    
+    // Add loading animation to images
+    document.querySelectorAll('.visualization-body img').forEach(img => {
+        const wrapper = img.parentElement;
+        wrapper.innerHTML = '<div class="loading-placeholder"></div>';
+        
+        const newImg = new Image();
+        newImg.onload = function() {
+            wrapper.innerHTML = '';
+            wrapper.appendChild(img);
+        };
+        newImg.src = img.src;
+    });
+});
+
+// Add intcomma filter functionality if not available
+if (!window.intcomma) {
+    window.intcomma = function(x) {
+        return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    };
+}
+</script>
+{% endblock %}
